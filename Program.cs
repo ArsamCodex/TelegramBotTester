@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using NBitcoin;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -54,12 +55,23 @@ async Task HandleMessage(Message msg)
     {
         Console.WriteLine($"This Question is invalid");
     }
-    // Console.WriteLine($"{user.FirstName} wrote {text}");
+   
 
-    // When we get a command, we react accordingly
     if (text.StartsWith("/"))
     {
         await HandleCommand(user.Id, text);
+    }
+    if (text=="BTC")
+    {
+        var x = GetBTCPrice();
+        var y = x.ToString();
+        await bot.SendTextMessageAsync(user.Id, y, entities: msg.Entities);
+    }
+    if (text == "BTCWALLET")
+    {
+        var x = GenerateBitcoinWallet;
+        var y = x.ToString();
+        await bot.SendTextMessageAsync(user.Id, y, entities: msg.Entities);
     }
     else if (screaming && text.Length > 0)
     {
@@ -89,4 +101,57 @@ async Task HandleCommand(long userId, string command)
     }
 
     await Task.CompletedTask;
+}
+
+static async Task<string> GetBTCPrice()
+{
+    // Binance API endpoint for getting current price
+    string endpoint = "https://www.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
+
+    // Create HttpClient instance
+    using (var client = new HttpClient())
+    {
+        try
+        {
+            // Send GET request to Binance API
+            var response = await client.GetAsync(endpoint);
+
+            // Check if request was successful
+            if (response.IsSuccessStatusCode)
+            {
+                // Read response content as string
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                // Parse JSON response to get BTC price
+                string btcPriceString = responseBody.Split(':')[2].Split(',')[0].Trim('"');
+
+                return btcPriceString;
+            }
+            else
+            {
+                // If request failed, throw an exception
+                throw new Exception("Error: " + response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Rethrow the exception
+            throw new Exception("Error: " + ex.Message);
+        }
+    }
+}
+  string GenerateBitcoinWallet()
+{
+    // Generate a new random private key
+    Key privateKey = new Key();
+
+    // Get the public key and Bitcoin address from the private key
+    BitcoinPubKeyAddress address =(BitcoinPubKeyAddress) privateKey.PubKey.GetAddress(ScriptPubKeyType.Legacy,Network.Main);
+
+    // Format the private key, public key, and Bitcoin address as a string
+    string walletInfo = $"Private Key: {privateKey.GetWif(Network.Main)}\n" +
+                        $"Public Key: {privateKey.PubKey}\n" +
+                        $"Bitcoin Address: {address}";
+
+    return walletInfo;
 }
